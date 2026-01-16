@@ -13,7 +13,7 @@ const Features = () => {
     <section className="py-16">
       <div className="text-center mb-10">
         <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-          Why Choose Hela Sasa?
+          Why Choose Nyota Pay?
         </h2>
         <p className="text-muted-foreground max-w-lg mx-auto">
           We make borrowing simple, fast, and secure

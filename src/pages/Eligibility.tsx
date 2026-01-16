@@ -89,7 +89,7 @@ const Eligibility = () => {
           className="flex items-center justify-center gap-2 mb-6"
         >
           <Zap className="w-7 h-7" />
-          <span className="font-bold text-xl">Hela Sasa</span>
+          <span className="font-bold text-xl">Nyota Pay</span>
         </motion.div>
         
         <motion.div
