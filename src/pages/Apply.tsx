@@ -55,9 +55,7 @@ const Apply = () => {
     const data = JSON.parse(saved);
     setUserData(data);
 
-    if (data.phone) {
-      setPhone(data.phone);
-    }
+    if (data.phone) setPhone(data.phone);
   }, [navigate]);
 
   const handleApply = () => {
@@ -71,11 +69,25 @@ const Apply = () => {
       return;
     }
 
-    if (!/^2547\d{8}$/.test(phone)) {
-      toast.error("Enter valid phone number in format 2547XXXXXXXX");
+    let formattedPhone = phone.trim();
+
+    // Accept 07XXXXXXXX format
+    if (formattedPhone.startsWith("07") && formattedPhone.length === 10) {
+      formattedPhone = "254" + formattedPhone.substring(1);
+    }
+
+    // Accept 7XXXXXXXX format
+    if (formattedPhone.startsWith("7") && formattedPhone.length === 9) {
+      formattedPhone = "254" + formattedPhone;
+    }
+
+    // Final validation: must be 2547XXXXXXXX
+    if (!/^2547\d{8}$/.test(formattedPhone)) {
+      toast.error("Enter a valid Kenyan phone number starting with 07");
       return;
     }
 
+    setPhone(formattedPhone);
     setShowConfirmModal(true);
   };
 
@@ -173,7 +185,7 @@ const Apply = () => {
         <div className="mb-4">
           <input
             type="tel"
-            placeholder="Enter phone e.g 2547XXXXXXXX"
+            placeholder="Enter phone e.g 0712345678"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full border rounded-lg p-3"
