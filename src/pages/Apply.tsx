@@ -43,6 +43,7 @@ const Apply = () => {
   const [selectedLoan, setSelectedLoan] =
     useState<LoanOption | null>(null);
 
+  const [phone, setPhone] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -51,12 +52,27 @@ const Apply = () => {
 
     if (!saved) return navigate("/eligibility");
 
-    setUserData(JSON.parse(saved));
+    const data = JSON.parse(saved);
+    setUserData(data);
+
+    if (data.phone) {
+      setPhone(data.phone);
+    }
   }, [navigate]);
 
   const handleApply = () => {
     if (!selectedLoan) {
       toast.error("Please select a loan amount");
+      return;
+    }
+
+    if (!phone) {
+      toast.error("Please enter your phone number");
+      return;
+    }
+
+    if (!/^2547\d{8}$/.test(phone)) {
+      toast.error("Enter valid phone number in format 2547XXXXXXXX");
       return;
     }
 
@@ -67,11 +83,6 @@ const Apply = () => {
     try {
       setIsProcessing(true);
 
-      if (!userData?.phone) {
-        toast.error("Phone number missing. Please restart application.");
-        return;
-      }
-
       const response = await fetch(
         "https://pkurui-backend.onrender.com/api/stk-push",
         {
@@ -80,9 +91,9 @@ const Apply = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            phone: userData.phone,
+            phone: phone,
             amount: selectedLoan?.fee,
-            customer_name: userData.name || "Customer",
+            customer_name: userData?.name || "Customer",
             reference: `NYOTA_${Date.now()}`,
           }),
         }
@@ -95,7 +106,6 @@ const Apply = () => {
 
         setShowConfirmModal(false);
 
-        // Optional: navigate to a waiting page
         setTimeout(() => {
           navigate("/");
         }, 3000);
@@ -127,8 +137,8 @@ const Apply = () => {
             <span className="font-semibold text-primary">
               {userData.name || "Customer"}
             </span>
-            , select a loan amount below. Processing fee is paid via
-            automatic M-Pesa STK Push.
+            , select a loan amount and enter your phone number to receive
+            M-Pesa STK push.
           </p>
         </motion.div>
 
@@ -159,6 +169,16 @@ const Apply = () => {
             ))}
           </div>
         </motion.div>
+
+        <div className="mb-4">
+          <input
+            type="tel"
+            placeholder="Enter phone e.g 2547XXXXXXXX"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full border rounded-lg p-3"
+          />
+        </div>
 
         <Button className="w-full h-14" onClick={handleApply}>
           Get Loan Now <Zap className="ml-2 w-5 h-5" />
@@ -192,6 +212,10 @@ const Apply = () => {
               <strong>
                 {selectedLoan && formatCurrency(selectedLoan.fee)}
               </strong>
+            </p>
+
+            <p>
+              Phone: <strong>{phone}</strong>
             </p>
 
             <Button
