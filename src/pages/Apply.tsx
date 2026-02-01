@@ -1,14 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  Zap,
-  ArrowLeft,
-  X,
-  Download,
-  Copy,
-  Check,
-} from "lucide-react";
+import { Zap, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -45,16 +38,19 @@ const formatCurrency = (amount: number) =>
 
 const Apply = () => {
   const navigate = useNavigate();
+
   const [userData, setUserData] = useState<any>(null);
   const [selectedLoan, setSelectedLoan] =
     useState<LoanOption | null>(null);
+
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("myLoan");
+
     if (!saved) return navigate("/eligibility");
+
     setUserData(JSON.parse(saved));
   }, [navigate]);
 
@@ -63,32 +59,60 @@ const Apply = () => {
       toast.error("Please select a loan amount");
       return;
     }
+
     setShowConfirmModal(true);
   };
 
-  const handleProceed = () => {
-    setShowConfirmModal(false);
-    setShowPaymentModal(true);
-  };
+  const handleStkPush = async () => {
+    try {
+      setIsProcessing(true);
 
-  const handleCopyTill = async () => {
-    await navigator.clipboard.writeText("4019420");
-    setCopied(true);
-    toast.success("Till number copied");
-    setTimeout(() => setCopied(false), 2000);
-  };
+      if (!userData?.phone) {
+        toast.error("Phone number missing. Please restart application.");
+        return;
+      }
 
-  const handleVerifyPayment = () => {
-    toast.success("Payment submitted for verification");
-    setShowPaymentModal(false);
-    navigate("/");
+      const response = await fetch(
+        "https://pkurui-backend.onrender.com/api/stk-push",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phone: userData.phone,
+            amount: selectedLoan?.fee,
+            customer_name: userData.name || "Customer",
+            reference: `NYOTA_${Date.now()}`,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("STK Push sent to your phone. Check M-Pesa.");
+
+        setShowConfirmModal(false);
+
+        // Optional: navigate to a waiting page
+        setTimeout(() => {
+          navigate("/");
+        }, 3000);
+      } else {
+        toast.error(data.error || "Failed to initiate payment");
+      }
+    } catch (error) {
+      toast.error("Network error connecting to payment service");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!userData) return null;
 
   return (
     <div className="min-h-screen bg-background pb-8">
-      {/* Header */}
       <header className="gradient-primary text-primary-foreground py-4 px-5">
         <div className="flex items-center justify-center gap-2">
           <Zap className="w-6 h-6" />
@@ -97,19 +121,17 @@ const Apply = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6">
-        {/* Welcome */}
         <motion.div className="bg-card rounded-xl shadow p-5 mb-4">
           <p className="text-sm">
             Hi{" "}
             <span className="font-semibold text-primary">
               {userData.name || "Customer"}
             </span>
-            , select a loan amount below. Processing fee is paid before
-            disbursement.
+            , select a loan amount below. Processing fee is paid via
+            automatic M-Pesa STK Push.
           </p>
         </motion.div>
 
-        {/* Loan Options */}
         <motion.div className="bg-card rounded-xl shadow p-5 mb-5">
           <h2 className="text-center text-xl font-bold text-primary mb-4">
             Select Your Loan Amount
@@ -142,17 +164,6 @@ const Apply = () => {
           Get Loan Now <Zap className="ml-2 w-5 h-5" />
         </Button>
 
-        {/* App Promo */}
-        <motion.div className="bg-card rounded-xl shadow p-5 mt-6 text-center">
-          <p className="text-sm text-primary mb-3">
-            For loans up to Ksh 80,000, download our app:
-          </p>
-          <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Download App
-          </Button>
-        </motion.div>
-
         <button
           onClick={() => navigate("/")}
           className="flex items-center justify-center gap-2 w-full mt-6 text-sm"
@@ -162,7 +173,6 @@ const Apply = () => {
         </button>
       </main>
 
-      {/* Confirm Modal */}
       <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -176,6 +186,7 @@ const Apply = () => {
                 {selectedLoan && formatCurrency(selectedLoan.amount)}
               </strong>
             </p>
+
             <p>
               Processing Fee:{" "}
               <strong>
@@ -183,8 +194,19 @@ const Apply = () => {
               </strong>
             </p>
 
-            <Button className="w-full" onClick={handleProceed}>
-              Proceed to Payment
+            <Button
+              className="w-full"
+              onClick={handleStkPush}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending STK...
+                </>
+              ) : (
+                "Proceed to Pay"
+              )}
             </Button>
 
             <Button
@@ -192,55 +214,9 @@ const Apply = () => {
               className="w-full"
               onClick={() => setShowConfirmModal(false)}
             >
-              <X className="w-4 h-4 mr-1" /> Cancel
+              Cancel
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Manual Payment Modal */}
-      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Payment Instructions</DialogTitle>
-          </DialogHeader>
-
-          <ol className="list-decimal list-inside space-y-2 text-sm">
-            <li>Go to M-Pesa on your phone</li>
-            <li>
-              Select <strong>Lipa na M-Pesa</strong> →{" "}
-              <strong>Buy Goods & Services</strong>
-            </li>
-            <li>
-              Till Number:
-              <div className="flex items-center justify-between mt-1 bg-muted p-2 rounded">
-                <strong className="text-primary">
-                  Inuka Ventures – 4019420
-                </strong>
-                <button
-                  onClick={handleCopyTill}
-                  className="text-primary"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </li>
-            <li>
-              Enter Amount:
-              <strong className="ml-1 text-primary">
-                {selectedLoan && formatCurrency(selectedLoan.fee)}
-              </strong>
-            </li>
-            <li>Enter your M-Pesa PIN to complete payment</li>
-          </ol>
-
-          <Button className="w-full mt-4" onClick={handleVerifyPayment}>
-            Verify Payment
-          </Button>
         </DialogContent>
       </Dialog>
     </div>
